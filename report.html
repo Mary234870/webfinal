@@ -300,50 +300,239 @@
     }
 
     function generateChart() {
-        const ctx = document.getElementById("expenseChart").getContext("2d");
-        const categoryTotals = {};
-        const categoryColors = {};
-        transactions.forEach(t=>{
-            categoryTotals[t.category] = (categoryTotals[t.category]||0)+Number(t.amount);
-            categoryColors[t.category] = "#F44336";
-        });
-        incomes.forEach(i=>{
-            categoryTotals[i.category] = (categoryTotals[i.category]||0)+Number(i.amount);
-            categoryColors[i.category] = "#4CAF50";
-        });
+    const ctx = document.getElementById("expenseChart").getContext("2d");
 
-        const labels = Object.keys(categoryTotals);
-        const data = Object.values(categoryTotals);
-        const colors = labels.map(l=>categoryColors[l]);
-        if(expenseChart) expenseChart.destroy();
-        if(labels.length===0) return;
-        expenseChart = new Chart(ctx,{
-            type:"pie",
-            data:{labels:labels,datasets:[{data:data,backgroundColor:colors,borderWidth:1}]},
-            options:{
-                responsive:true,
-                plugins:{
-                    legend:{position:"bottom"},
-                    datalabels:{
-                        formatter:(value,context)=>{
-                            const total = context.chart.data.datasets[0].data.reduce((a,b)=>a+b,0);
-                            const percent = ((value/total)*100).toFixed(1);
-                            return `${context.chart.data.labels[context.dataIndex]} (${percent}%)`;
-                        },
-                        color:"#fff",
-                        font:{weight:"bold",size:12}
+    const categoryTotals = {};
+
+    // Color palette
+    const colorPalette = [
+    "#FF6384",
+    "#36A2EB",
+    "#FFCE56",
+    "#4BC0C0",
+    "#9966FF",
+    "#FF9F40",
+    "#8BC34A",
+    "#E91E63",
+    "#009688",
+    "#3F51B5",
+    "#CDDC39",
+    "#795548",
+    "#607D8B",
+    "#673AB7",
+    "#FFC107",
+    "#00BCD4",
+    "#FF5722",
+    "#9C27B0"
+];
+
+    // Combine all transactions
+    const allData = [
+        ...transactions.map(t => ({ ...t, type: "expense" })),
+        ...incomes.map(i => ({ ...i, type: "income" }))
+    ];
+
+    // Compute totals per category
+    allData.forEach(item => {
+        if (!categoryTotals[item.category]) {
+            categoryTotals[item.category] = 0;
+        }
+        categoryTotals[item.category] += Number(item.amount);
+    });
+
+    const labels = Object.keys(categoryTotals);
+    const data = Object.values(categoryTotals);
+
+    // Assign different colors automatically
+    const colors = labels.map((_, index) =>
+        colorPalette[index % colorPalette.length]
+    );
+
+    // Destroy old chart before creating new one
+    if (expenseChart) expenseChart.destroy();
+
+    // Prevent empty chart
+    if (labels.length === 0) return;
+
+    expenseChart = new Chart(ctx, {
+        type: "pie",
+        data: {
+            labels: labels,
+            datasets: [{
+                data: data,
+                backgroundColor: colors,
+                borderColor: "#fff",
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: "bottom"
+                },
+                datalabels: {
+                    formatter: (value, context) => {
+                        const total = context.chart.data.datasets[0].data
+                        .reduce((a, b) => a + b, 0);
+                        const percent = ((value / total) * 100).toFixed(1);
+                        return `${percent}%`;
+                    },
+                    color: "#fff",
+                    font: {
+                        weight: "bold",
+                        size: 12
                     }
                 }
-            },
-            plugins:[ChartDataLabels]
-        });
-    }
+            }
+        },
+        plugins: [ChartDataLabels]
+    });
+}
 
     displayTransactionHistory();
     generateChart();
-    document.getElementById("generate-tips").addEventListener("click",()=>{
-        alert("Tips generation placeholder!");
+    document.getElementById("generate-tips").addEventListener("click", () => {
+
+    const allData = [
+        ...transactions.map(t => ({ ...t, type: "expense" })),
+        ...incomes.map(i => ({ ...i, type: "income" }))
+    ];
+
+    if (allData.length === 0) {
+        alert("No financial data available yet.");
+        return;
+    }
+
+    // Get oldest transaction date
+    const dates = allData
+        .filter(item => item.date)
+        .map(item => new Date(item.date));
+
+    if (dates.length === 0) {
+        alert("No valid transaction dates found.");
+        return;
+    }
+
+    const oldestDate = new Date(Math.min(...dates));
+    const currentDate = new Date();
+
+    // Calculate days difference
+    const diffTime = currentDate - oldestDate;
+    const diffDays = diffTime / (1000 * 60 * 60 * 24);
+
+    // Require at least 7 days
+    if (diffDays < 7) {
+        alert("Tips will be available after 1 week of tracking your expenses and income.");
+        return;
+    }
+
+    // Calculate totals
+    const expenseTotals = {};
+    let totalExpenses = 0;
+    let totalIncome = 0;
+
+    transactions.forEach(t => {
+        expenseTotals[t.category] =
+            (expenseTotals[t.category] || 0) + Number(t.amount);
+
+        totalExpenses += Number(t.amount);
     });
+
+    incomes.forEach(i => {
+        totalIncome += Number(i.amount);
+    });
+
+    // Find highest expense category
+    let highestCategory = "";
+    let highestAmount = 0;
+
+    for (let category in expenseTotals) {
+        if (expenseTotals[category] > highestAmount) {
+            highestAmount = expenseTotals[category];
+            highestCategory = category;
+        }
+    }
+
+    // Savings
+    const savings = totalIncome - totalExpenses;
+
+    // Expense percentage
+    const expensePercentage =
+        totalIncome > 0
+            ? ((totalExpenses / totalIncome) * 100).toFixed(1)
+            : 0;
+
+    // Generate tips
+    let tips = `📊 WEEKLY FINANCIAL REPORT & SMART TIPS\n\n`;
+
+    // Highest spending category
+    if (highestCategory) {
+        tips += `🔹 Highest Spending Category:\n`;
+        tips += `"${highestCategory}" = ₱${highestAmount.toFixed(2)}\n`;
+        tips += `Try setting a weekly limit for this category to avoid overspending.\n\n`;
+    }
+
+    // Savings or loss
+    if (savings > 0) {
+        tips += `💰 Savings Status:\n`;
+        tips += `You saved ₱${savings.toFixed(2)} this week.\n`;
+        tips += `Continue maintaining good spending habits and consider saving at least 20% of your income.\n\n`;
+    } else {
+        tips += `⚠ Budget Warning:\n`;
+        tips += `Your expenses exceeded your income by ₱${Math.abs(savings).toFixed(2)}.\n`;
+        tips += `Reduce unnecessary purchases and prioritize important expenses.\n\n`;
+    }
+
+    // Expense percentage analysis
+    tips += `📈 Expense Analysis:\n`;
+    tips += `You used ${expensePercentage}% of your income.\n`;
+
+    if (expensePercentage >= 90) {
+        tips += `This is very high. Avoid impulse buying and focus only on needs.\n\n`;
+    } else if (expensePercentage >= 70) {
+        tips += `Your spending is above the recommended level.\n`;
+        tips += `Try creating stricter spending limits next week.\n\n`;
+    } else if (expensePercentage >= 50) {
+        tips += `Your spending is moderate.\n`;
+        tips += `Keep balancing your expenses and savings.\n\n`;
+    } else {
+        tips += `Excellent budgeting! You are managing your finances wisely.\n\n`;
+    }
+
+    // Category-based smart tips
+    if (highestCategory.toLowerCase().includes("food")) {
+        tips += `🍔 Food Tip:\n`;
+        tips += `Consider meal planning or cooking at home more often to reduce food expenses.\n\n`;
+    }
+
+    if (highestCategory.toLowerCase().includes("shopping")) {
+        tips += `🛍 Shopping Tip:\n`;
+        tips += `Avoid unplanned purchases and compare prices before buying.\n\n`;
+    }
+
+    if (highestCategory.toLowerCase().includes("transport")) {
+        tips += `🚗 Transportation Tip:\n`;
+        tips += `Using public transportation or ride-sharing occasionally may help lower costs.\n\n`;
+    }
+
+    if (highestCategory.toLowerCase().includes("entertainment")) {
+        tips += `🎮 Entertainment Tip:\n`;
+        tips += `Set a fixed entertainment budget to avoid excessive leisure spending.\n\n`;
+    }
+
+    // General financial advice
+    tips += `📌 General Budgeting Tips:\n`;
+    tips += `• Track your expenses daily.\n`;
+    tips += `• Separate needs from wants.\n`;
+    tips += `• Build an emergency fund.\n`;
+    tips += `• Save before spending.\n`;
+    tips += `• Review your spending habits weekly.\n\n`;
+
+    tips += `✅ Continue recording transactions regularly for more accurate financial insights.`;
+
+    alert(tips);
+});
 </script>
 </body>
 </html>
