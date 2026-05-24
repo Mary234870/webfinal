@@ -686,12 +686,24 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             // SAVE TRANSACTIONS
-            let transactions =
-                getData("transactions") || [];
+        if (type === "Income") {
+
+            let incomes = getData("incomes") || [];
+
+            incomes.push({
+                category: category,
+                amount: amount,
+                date: new Date().toLocaleDateString(),
+                time: new Date().toLocaleTimeString()
+            });
+
+            saveData("incomes", incomes);
+
+        } else {
+
+            let transactions = getData("transactions") || [];
 
             transactions.push({
-
-                type: type,
                 category: category,
                 amount: amount,
                 date: new Date().toLocaleDateString(),
@@ -699,10 +711,14 @@ document.addEventListener("DOMContentLoaded", () => {
             });
 
             saveData("transactions", transactions);
+        }
 
-            alert(type + " added successfully!");
+        alert(type + " added successfully!");
 
-            transactionAmountEl.value = "";
+        transactionAmountEl.value = "";
+
+    }
+);
         }
     );
 
